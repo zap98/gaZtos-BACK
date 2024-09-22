@@ -1,7 +1,8 @@
 package com.example.gAZtos.Services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,8 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
@@ -29,11 +32,10 @@ public class UserService {
 
     // Autenticación del usuario
     public User authenticateUser(LoginRequest loginRequest) {
-       // Buscar usuario por nombre de usuario
-       User user = userRepository.findByUsername(loginRequest.getUsername());
-
+       User user = findByUserName(loginRequest.getUsername());
        // Verificar si el usuario existe
        if (user != null) {
+           logger.info("User {} exists in the database", user.getUsername());
            String hashedPasswordFromDb = user.getPassword(); // Obtener la contraseña hasheada
 
            if (passwordEncoder.matches(loginRequest.getPassword(), hashedPasswordFromDb)) {
@@ -43,14 +45,7 @@ public class UserService {
         return null;
     }
 
-    // Comprueba si el username ya está registrado
-    public User userExists(String username) {
-
-        User result = userRepository.findByUsername(username);
-        return result;     
-    }
-
-    public User registerUser(String username, String password, String firstName, String lastName, byte[] profilePictureBytes) throws IOException {
+    public void registerUser(String username, String password, String firstName, String lastName, byte[] profilePictureBytes) throws IOException {
         User user = new User();
 
         user.setUsername(username);
@@ -65,8 +60,7 @@ public class UserService {
             // Asignar la ruta de la imagen al usuario
             user.setProfilePicturePath(imagePath);
         }
-
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
     // Implementación del método para guardar la imagen
@@ -83,7 +77,6 @@ public class UserService {
     }
 
     public User findByUserName(String username) {
-        User result = userRepository.findByUsername(username);
-        return result;
+        return userRepository.findByUsername(username);
     }
 }
