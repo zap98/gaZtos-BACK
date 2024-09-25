@@ -26,6 +26,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                     .requestMatchers("/api/auth/register").permitAll()
                     .requestMatchers("/api/auth/login").permitAll()
+                    .requestMatchers("/api/auth/forgot-password").permitAll()
                     .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
