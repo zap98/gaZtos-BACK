@@ -1,22 +1,10 @@
 package com.example.gAZtos.Services;
-import com.example.gAZtos.Controllers.AuthController;
 import com.example.gAZtos.Dto.EmailConfig;
 import com.example.gAZtos.Entities.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,10 +15,12 @@ import java.util.Optional;
 @Service
 public class EmailService {
 
-    @Autowired
-    private EmailConfig emailConfig;
-
+    private final EmailConfig emailConfig;
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+
+    public EmailService(EmailConfig emailConfig) {
+        this.emailConfig = emailConfig;
+    }
 
     public void sendPasswordResetEmail(Optional<User> user, String resetLink) {
         User foundUser = user.orElseThrow(() -> new IllegalArgumentException("User not found"));

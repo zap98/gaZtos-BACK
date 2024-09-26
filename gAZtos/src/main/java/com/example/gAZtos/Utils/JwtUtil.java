@@ -7,7 +7,6 @@ import com.example.gAZtos.Entities.PasswordResetToken;
 import com.example.gAZtos.Entities.User;
 import com.example.gAZtos.Repositories.PasswordResetTokenRepository;
 import io.jsonwebtoken.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,8 +16,11 @@ public class JwtUtil {
     @Value("${jwt.secret}") // Leer la clave secreta desde application.properties
     private String SECRET_KEY;
 
-    @Autowired
-    private PasswordResetTokenRepository passwordResetTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+
+    public JwtUtil(PasswordResetTokenRepository passwordResetTokenRepository) {
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+    }
 
     public String generateToken(String username) {
         return Jwts.builder()
@@ -33,7 +35,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 10)) // Expiración de 1 hora
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 5)) // Expiración de 5 minutos
                 .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
                 .compact();
     }
@@ -62,7 +64,7 @@ public class JwtUtil {
         return (username.equals(user.getUsername()) && !isTokenExpired(token));
     }
 
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractAllClaims(token).getExpiration().before(new Date());
     }
 

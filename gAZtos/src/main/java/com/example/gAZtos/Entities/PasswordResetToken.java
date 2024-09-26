@@ -1,7 +1,6 @@
 package com.example.gAZtos.Entities;
 
 import jakarta.persistence.*;
-
 import java.util.Date;
 
 @Entity

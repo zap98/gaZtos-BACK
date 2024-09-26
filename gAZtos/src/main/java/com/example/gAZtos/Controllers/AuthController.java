@@ -1,24 +1,19 @@
 package com.example.gAZtos.Controllers;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
-
+import com.example.gAZtos.Dto.*;
+import com.example.gAZtos.Services.AuthService;
 import com.example.gAZtos.Services.EmailService;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.example.gAZtos.Dto.LoginRequest;
-import com.example.gAZtos.Dto.LoginResponse;
-import com.example.gAZtos.Dto.UserDto;
 import com.example.gAZtos.Entities.User;
-import com.example.gAZtos.Services.UserService;
 import com.example.gAZtos.Utils.JwtUtil;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,20 +21,20 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private EmailService emailService;
-
+    private final JwtUtil jwtUtil;
+    private final EmailService emailService;
+    private final AuthService authService;
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
+    public AuthController(JwtUtil jwtUtil, EmailService emailService, AuthService authService) {
+        this.jwtUtil = jwtUtil;
+        this.emailService = emailService;
+        this.authService = authService;
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        User user = userService.authenticateUser(loginRequest);        
+        User user = authService.authenticateUser(loginRequest);
 
         if (user != null) {
             String token = jwtUtil.generateToken(loginRequest.getUsername());
@@ -57,43 +52,60 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/prueba")
+    public ResponseEntity<?> prueba() {
+        return null;
+    }
+
+    /* Método que envía el correo de recuperación */
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody String email) throws JSONException {
         JSONObject jsonObject = new JSONObject(email);
         String stringEmail = jsonObject.getString("email");
 
-        Optional<User> user = userService.findByEmail(stringEmail);
+        RecoveryResponse recoveryResponse = new RecoveryResponse(null, null);
+        Optional<User> user = authService.findByEmail(stringEmail);
 
         if (user != null && user.isPresent()) {
             String token = jwtUtil.generateEmailToken(stringEmail);
-            userService.saveTokenForUser(stringEmail, token);
+            authService.saveTokenForUser(stringEmail, token);
             String resetLink = "http://localhost:8080/reset-password?token=" + token;
-
             try {
+                recoveryResponse.setUsername(user.get().getUsername());
+                recoveryResponse.setToken(token);
                 emailService.sendPasswordResetEmail(user, resetLink);
-                return ResponseEntity.ok("Se ha enviado un correo electrónico con instrucciones para restablecer la contraseña.");
+                logger.info("forgotPassword: Send email to {} to reset link", stringEmail);
+                return ResponseEntity.ok(recoveryResponse);
             } catch (Exception e) {
+                logger.error("forgotPassword: Error sending recovery email to {}", stringEmail);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al enviar el correo electrónico.");
             }
+        }
+        return ResponseEntity.ok(recoveryResponse);
+    }
+
+    /* Endpoint para modificar la contraseña una vez hemos accedido al enlace del correo */
+    @PostMapping("/recoveryPassword")
+    public ResponseEntity<?> recoveryPassword(@RequestBody RecoveryPasswordDto recoveryPasswordDto) {
+        String username = recoveryPasswordDto.getUsername();
+        String newPassword = recoveryPasswordDto.getPassword();
+        String token = recoveryPasswordDto.getToken();
+
+        String result = authService.recoveryPassword(username, newPassword, token);
+        Map<String, String> response = new HashMap<>();
+
+        if (result.equals("ok")) {
+            response.put("status", "success");
+            return ResponseEntity.ok(response);
+        } else if (result.equals("Token expirado") || result.equals("Token invalido")) {
+            response.put("status", "error");
+            return ResponseEntity.ok(result);
         }
         return null;
     }
 
-    @PostMapping("/recoveryPassword")
-    public ResponseEntity<?> recoveryPassword(@RequestBody String newPassword) throws JSONException {
-        JSONObject jsonObject = new JSONObject(newPassword);
-        String stringPassword = jsonObject.getString("password");
-
-        return null;
-    }
-
-    @PostMapping("/prueba")
-    public void prueba() {
-       System.out.println("Prueba");
-    }
-
     @PostMapping("/register")
-    public ResponseEntity<String> register(
+    public ResponseEntity<?> register(
             @RequestParam("firstName") String firstName,
             @RequestParam("lastName") String lastName,
             @RequestParam("username") String username,
@@ -103,22 +115,26 @@ public class AuthController {
     ) {
         try {
             // Verificar si el usuario ya existe
-            User userAux = userService.findByUserName(username);
+            User userAux = authService.findByUserName(username);
+            Map<String, String> response = new HashMap<>();
+
             if (userAux != null) {
-                logger.warn("User {} is already registered", username);
-                return ResponseEntity.badRequest().body("El usuario ya existe");
+                logger.warn("register: User {} is already registered", username);
+                response.put("status", "error");
+                return ResponseEntity.ok(response);
             }
 
             byte[] profilePictureBytes = null;
             if (profilePicture != null && !profilePicture.isEmpty()) {
                 profilePictureBytes = profilePicture.getBytes();
-                logger.info("Profile picture received, size: {} bytes", profilePictureBytes.length);
+                logger.info("register: Profile picture received, size: {} bytes", profilePictureBytes.length);
             }
 
             // Registrar el usuario
-            userService.registerUser(username, email, password, firstName, lastName, profilePictureBytes);
-            logger.info("User {} successfully registered", username);
-            return ResponseEntity.ok("Usuario registrado exitosamente");
+            authService.registerUser(username, email, password, firstName, lastName, profilePictureBytes);
+            logger.info("register: User {} successfully registered", username);
+            response.put("status", "success");
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             logger.error("Error during user registration: ", e);

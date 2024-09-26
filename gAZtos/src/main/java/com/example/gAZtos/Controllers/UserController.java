@@ -1,23 +1,28 @@
 package com.example.gAZtos.Controllers;
 
 import com.example.gAZtos.Dto.UserPasswordDto;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.gAZtos.Entities.User;
 import com.example.gAZtos.Services.UserService;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping("/getProfileImg")
     public ResponseEntity<?> getProfileImg(@RequestParam String username) {
@@ -46,16 +51,28 @@ public class UserController {
                     .body(profileImage);
 
         } catch (Exception e) {
+            logger.error("getProfileImg: Error retrieving profile image: {}", e.getMessage());
             return ResponseEntity.internalServerError().body("Error retrieving profile image");
         }
     }
 
     @PostMapping("/changePassword")
-    public ResponseEntity<?> changePassword(@RequestBody UserPasswordDto userPasswordDto) throws JSONException {
+    public ResponseEntity<?> changePassword(@RequestBody UserPasswordDto userPasswordDto) {
         String userName = userPasswordDto.getUsername();
         String newPassword = userPasswordDto.getPassword();
 
         String result = userService.changePassword(userName, newPassword);
-        return ResponseEntity.ok(result);
+        Map<String, String> response = new HashMap<>();
+
+        if (result.equals("ok")) {
+            response.put("status", "success");
+            return ResponseEntity.ok(response);
+        } else if (result.equals("Equal passwords")) {
+            response.put("status", "warning");
+            return ResponseEntity.ok(response);
+        }
+
+        response.put("status", "error");
+        return ResponseEntity.ok(response);
     }
 }
