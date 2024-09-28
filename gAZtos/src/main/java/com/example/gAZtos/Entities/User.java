@@ -1,22 +1,23 @@
 package com.example.gAZtos.Entities;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Column;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Table(name = "users") // Nombre de la tabla en la base de datos
-public class User {
-
+public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long user_id;
 
     @Column(nullable = false, unique = true)
     private String username;
+
+    @Column(nullable = false, unique = true)
+    private String email;
 
     @Column(nullable = false)
     private String password;
@@ -27,29 +28,29 @@ public class User {
     @Column(nullable = false)
     private String lastName;
 
+    @Lob
     @Column(nullable = true)
-    private String profilePicturePath;
+    private byte[] profilePicture; // Almacena la imagen como un arreglo de bytes
 
     // Constructor vacío necesario para JPA
     public User() {}
 
     // Constructor completo
-    public User(String username, String password, String firstName, String lastName, String profilePicturePath) {
+    public User(String username, String email, String password, String firstName, String lastName, byte[] profilePicture) {
         this.username = username;
+        this.email = email;
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
-        this.profilePicturePath = profilePicturePath;
+        this.profilePicture = profilePicture; // Cambiado a byte[]
     }
-
-    // Getters y setters
 
     public Long getId() {
-        return id;
+        return user_id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setId(Long user_id) {
+        this.user_id = user_id;
     }
 
     public String getUsername() {
@@ -58,6 +59,19 @@ public class User {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of();
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPassword() {
@@ -84,15 +98,12 @@ public class User {
         this.lastName = lastName;
     }
 
-    public String getProfilePicture() {
-        return profilePicturePath;
+    public byte[] getProfilePicture() { // Cambiado para devolver un byte[]
+        return profilePicture;
     }
 
-    public void setProfilePicture(String profilePicture) {
-        this.profilePicturePath = profilePicture;
-    }
-
-    public void setProfilePicturePath(String profilePicturePath) {
-        this.profilePicturePath = profilePicturePath;
+    public void setProfilePicture(byte[] profilePicture) { // Cambiado para aceptar byte[]
+        this.profilePicture = profilePicture;
     }
 }
+
